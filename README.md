@@ -1,3 +1,26 @@
+## ueye_cam (melodic) - 1.0.17-1
+
+The packages in the `ueye_cam` repository were released into the `melodic` distro by running `/usr/bin/bloom-release --rosdistro melodic --track melodic ueye_cam` on `Thu, 27 Aug 2020 00:48:00 -0000`
+
+The `ueye_cam` package was released.
+
+Version of package(s) in repository `ueye_cam`:
+
+- upstream repository: https://github.com/anqixu/ueye_cam.git
+- release repository: unknown
+- rosdistro version: `null`
+- old version: `null`
+- new version: `1.0.17-1`
+
+Versions of tools used:
+
+- bloom version: `0.9.8`
+- catkin_pkg version: `0.4.22`
+- rosdep version: `0.19.0`
+- rosdistro version: `0.8.2`
+- vcstools version: `0.1.42`
+
+
 ## ueye_cam (kinetic) - 1.0.16-0
 
 The packages in the `ueye_cam` repository were released into the `kinetic` distro by running `/usr/bin/bloom-release ueye_cam --track kinetic --rosdistro kinetic` on `Tue, 03 Jan 2017 01:52:40 -0000`
