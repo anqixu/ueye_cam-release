@@ -1,0 +1,12 @@
+Source: ros-melodic-ueye-cam
+Section: misc
+Priority: optional
+Maintainer: Anqi Xu <anqixu@cim.mcgill.ca>
+Build-Depends: debhelper (>= 9.0.0), ros-melodic-camera-calibration-parsers, ros-melodic-camera-info-manager, ros-melodic-catkin, ros-melodic-dynamic-reconfigure, ros-melodic-image-transport, ros-melodic-nodelet, ros-melodic-roscpp, ros-melodic-sensor-msgs
+Homepage: 
+Standards-Version: 3.9.2
+
+Package: ros-melodic-ueye-cam
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-melodic-camera-calibration-parsers, ros-melodic-camera-info-manager, ros-melodic-dynamic-reconfigure, ros-melodic-image-transport, ros-melodic-nodelet, ros-melodic-roscpp, ros-melodic-sensor-msgs
+Description: A ROS nodelet and node that wraps the driver API for UEye cameras by IDS Imaging Development Systems GMBH.
