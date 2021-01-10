@@ -2,6 +2,41 @@
 Changelog for package ueye_cam
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.0.18 (2021-01-09)
+-------------------
+* updated driver URLs for 4.94 version
+* [uEye 4.94] Update Deprecated Event Handling Functions  (`#97 <https://github.com/anqixu/ueye_cam/issues/97>`)
+  * Updated event functions to 4.94 API + Added init of event before enabling it
+  * Added uEye 4.94 req
+  * Changed timeout to UINT to fit 4_94 API
+* Adding call of exit routine for the frame event
+* Adding auto exposure reference value
+* Added support for setting the software-gamma
+* Package format update and code cleanup
+* Contributors: Anqi Xu, Brett Newman, Nullket, jmackay2, nullket
+
+1.0.17 (2020-08-26)
+-------------------
+* Merge pull request `#83 <https://github.com/anqixu/ueye_cam/issues/83>` from anqixu/use_ros_time
+  Do not get timestamp from camera, and use ros::Time::now() instead
+* Merge pull request `#61 <https://github.com/anqixu/ueye_cam/issues/61>` from jackokaiser/master
+  Adapted roslaunch for passing camera name as argument
+* Changes from https://github.com/anqixu/ueye_cam/issues/82
+* Do not link the ueye api to the check api node to avoid conflicts
+* Default dynamic_reconfigure parameters now don't overwrite ini file params.
+  Fixes `#74 <https://github.com/anqixu/ueye_cam/issues/74>`
+* image dimensions now account for cam_subsampling_rate
+* Merge pull request `#65 <https://github.com/anqixu/ueye_cam/issues/65>` from flynneva/dev
+* removed / from frame_ID so that data can be used with new ros tf2 standard
+* Removed trailing whitespaces
+* Readded camera_conf for backward compatibility
+* changed setFlashParams failure into warning
+* Adapted roslaunch for passing camera name as argument
+* nodelet no longer dies upon setFlashParams fail (since some cameras don't support it)
+* Merge pull request `#54 <https://github.com/anqixu/ueye_cam/issues/54>` from 534o/master
+* forget to add check_ueye_api to install list
+* Contributors: Anqi Xu, Anup Parikh, Evan Flynn, Jacques KAISER, Tokyo Opensource Robotics Developer 534, loooph
+
 1.0.16 (2017-01-02)
 -------------------
 * fixed crash on camera reconnect
