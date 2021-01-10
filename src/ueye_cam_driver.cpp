@@ -57,8 +57,8 @@ namespace ueye_cam {
 // Note that all of these default settings will be overwritten
 // by syncCamConfig() during connectCam()
 UEyeCamDriver::UEyeCamDriver(int cam_ID, string cam_name):
-    cam_handle_((HIDS) 0),
-    cam_buffer_(NULL),
+    cam_handle_(HIDS(0)),
+    cam_buffer_(nullptr),
     cam_buffer_id_(0),
     cam_buffer_pitch_(0),
     cam_buffer_size_(0),
@@ -106,8 +106,8 @@ INT UEyeCamDriver::connectCam(int new_cam_ID) {
 
   // Attempt to open camera handle, and handle case where camera requires a
   // mandatory firmware upload
-  cam_handle_ = (HIDS) cam_id_;
-  if ((is_err = is_InitCamera(&cam_handle_, NULL)) == IS_STARTER_FW_UPLOAD_NEEDED) {
+  cam_handle_ = static_cast<HIDS>(cam_id_);
+  if ((is_err = is_InitCamera(&cam_handle_, nullptr)) == IS_STARTER_FW_UPLOAD_NEEDED) {
     INT uploadTimeMSEC = 25000;
     is_GetDuration (cam_handle_, IS_STARTER_FW_UPLOAD, &uploadTimeMSEC);
 
@@ -115,8 +115,8 @@ INT UEyeCamDriver::connectCam(int new_cam_ID) {
       << "]; please wait for about " << uploadTimeMSEC/1000.0 << " seconds");
 
     // Attempt to re-open camera handle while triggering automatic firmware upload
-    cam_handle_ = (HIDS) (((INT) cam_handle_) | IS_ALLOW_STARTER_FW_UPLOAD);
-    is_err = is_InitCamera(&cam_handle_, NULL); // Will block for N seconds
+    cam_handle_ = static_cast<HIDS>(static_cast<INT>(cam_handle_) | IS_ALLOW_STARTER_FW_UPLOAD);
+    is_err = is_InitCamera(&cam_handle_, nullptr); // Will block for N seconds
   }
   if (is_err != IS_SUCCESS) {
     ERROR_STREAM("Could not open UEye camera ID " << cam_id_ <<
@@ -158,14 +158,14 @@ INT UEyeCamDriver::disconnectCam() {
     setStandbyMode();
 
     // Release existing camera buffers
-    if (cam_buffer_ != NULL) {
+    if (cam_buffer_ != nullptr) {
       is_err = is_FreeImageMem(cam_handle_, cam_buffer_, cam_buffer_id_);
     }
-    cam_buffer_ = NULL;
+    cam_buffer_ = nullptr;
 
     // Release camera handle
     is_err = is_ExitCamera(cam_handle_);
-    cam_handle_ = (HIDS) 0;
+    cam_handle_ = HIDS(0);
 
     DEBUG_STREAM("Disconnected from [" + cam_name_ + "]");
   }
@@ -245,9 +245,9 @@ INT UEyeCamDriver::setResolution(INT& image_width, INT& image_height,
   INT is_err = IS_SUCCESS;
 
   // Validate arguments
-  CAP(image_width, 8, (INT) cam_sensor_info_.nMaxWidth);
-  CAP(image_height, 4, (INT) cam_sensor_info_.nMaxHeight);
-  if (image_left >= 0 && (int) cam_sensor_info_.nMaxWidth - image_width - image_left < 0) {
+  CAP(image_width, 8, static_cast<INT>(cam_sensor_info_.nMaxWidth));
+  CAP(image_height, 4, static_cast<INT>(cam_sensor_info_.nMaxHeight));
+  if (image_left >= 0 && static_cast<int>(cam_sensor_info_.nMaxWidth) - image_width - image_left < 0) {
     WARN_STREAM("Cannot set AOI left index to " <<
         image_left << " with a frame width of " <<
         image_width << " and sensor max width of " <<
@@ -255,7 +255,7 @@ INT UEyeCamDriver::setResolution(INT& image_width, INT& image_height,
     image_left = -1;
   }
   if (image_top >= 0 &&
-      (int) cam_sensor_info_.nMaxHeight - image_height - image_top < 0) {
+      static_cast<int>(cam_sensor_info_.nMaxHeight) - image_height - image_top < 0) {
     WARN_STREAM("Cannot set AOI top index to " <<
         image_top << " with a frame height of " <<
         image_height << " and sensor max height of " <<
@@ -263,9 +263,9 @@ INT UEyeCamDriver::setResolution(INT& image_width, INT& image_height,
     image_top = -1;
   }
   cam_aoi_.s32X = (image_left < 0) ?
-      (cam_sensor_info_.nMaxWidth - image_width) / 2 : image_left;
+      (cam_sensor_info_.nMaxWidth - static_cast<unsigned int>(image_width)) / 2 : image_left;
   cam_aoi_.s32Y = (image_top < 0) ?
-      (cam_sensor_info_.nMaxHeight - image_height) / 2 : image_top;
+      (cam_sensor_info_.nMaxHeight - static_cast<unsigned int>(image_height)) / 2 : image_top;
   cam_aoi_.s32Width = image_width;
   cam_aoi_.s32Height = image_height;
 
@@ -358,7 +358,7 @@ INT UEyeCamDriver::setSubsampling(int& rate, bool reallocate_buffer) {
 
   DEBUG_STREAM("Updated subsampling rate to " << rate << "X for [" << cam_name_ << "]");
 
-  cam_subsampling_rate_ = rate;
+  cam_subsampling_rate_ = static_cast<unsigned int>(rate);
 
   return (reallocate_buffer ? reallocateCamBuffer() : IS_SUCCESS);
 }
@@ -430,7 +430,7 @@ INT UEyeCamDriver::setBinning(int& rate, bool reallocate_buffer) {
 
   DEBUG_STREAM("Updated binning rate to " << rate << "X for [" << cam_name_ << "]");
 
-  cam_binning_rate_ = rate;
+  cam_binning_rate_ = static_cast<unsigned int>(rate);
 
   return (reallocate_buffer ? reallocateCamBuffer() : IS_SUCCESS);
 }
@@ -559,7 +559,32 @@ INT UEyeCamDriver::setGain(bool& auto_gain, INT& master_gain_prc, INT& red_gain_
 }
 
 
-INT UEyeCamDriver::setExposure(bool& auto_exposure, double& exposure_ms) {
+INT UEyeCamDriver::setSoftwareGamma(INT& software_gamma) {
+  if (!isConnected()) return IS_INVALID_CAMERA_HANDLE;
+
+  INT is_err = IS_SUCCESS;
+
+  // According to ids this is only possible when the color mode is debayered by the ids driver 
+  if ((color_mode_ == IS_CM_SENSOR_RAW8)  ||
+      (color_mode_ == IS_CM_SENSOR_RAW10) ||
+      (color_mode_ == IS_CM_SENSOR_RAW12) ||
+      (color_mode_ == IS_CM_SENSOR_RAW16)) {
+    WARN_STREAM("Software gamma only possible when the color mode is debayered, " <<
+    "could not set software gamma for [" << cam_name_ << "]"); 
+    return IS_NO_SUCCESS;    
+  }
+
+  // set software gamma 
+  if ((is_err = is_Gamma(cam_handle_, IS_GAMMA_CMD_SET, (void*) &software_gamma, sizeof(software_gamma))) != IS_SUCCESS) {
+    WARN_STREAM("Software gamma could not be set for [" << cam_name_ <<
+    "] (" << err2str(is_err) << ")");       
+  }  
+
+  return is_err;
+}
+
+
+INT UEyeCamDriver::setExposure(bool& auto_exposure, double& auto_exposure_reference, double& exposure_ms) {
   if (!isConnected()) return IS_INVALID_CAMERA_HANDLE;
 
   INT is_err = IS_SUCCESS;
@@ -577,6 +602,13 @@ INT UEyeCamDriver::setExposure(bool& auto_exposure, double& exposure_ms) {
       auto_exposure = false;
     }
   }
+
+  // Set exposure reference for auto exposure controller 
+  if ((is_err = is_SetAutoParameter (cam_handle_, IS_SET_AUTO_REFERENCE, 
+    &auto_exposure_reference, 0)) != IS_SUCCESS) {
+    WARN_STREAM("Auto exposure reference value could not be set for [" << cam_name_ <<
+    "] (" << err2str(is_err) << ")");      
+    }
 
   // Set manual exposure timing
   if (!auto_exposure) {
@@ -725,14 +757,14 @@ INT UEyeCamDriver::setPixelClockRate(INT& clock_rate_mhz) {
       return is_err;
     }
   }
-  int minPixelClock = (int) pixelClockList[0];
-  int maxPixelClock = (int) pixelClockList[numberOfSupportedPixelClocks-1];
+  int minPixelClock = static_cast<int>(pixelClockList[0]);
+  int maxPixelClock = static_cast<int>(pixelClockList[numberOfSupportedPixelClocks-1]);
   CAP(clock_rate_mhz, minPixelClock, maxPixelClock);
 
   // As list is sorted smallest to largest...
   for(UINT i = 0; i < numberOfSupportedPixelClocks; i++) {
-    if(clock_rate_mhz <= (int) pixelClockList[i]) {
-      clock_rate_mhz = pixelClockList[i];  // ...get the closest-larger-or-equal from the list
+    if(clock_rate_mhz <= static_cast<int>(pixelClockList[i])) {
+      clock_rate_mhz = static_cast<INT>(pixelClockList[i]);  // ...get the closest-larger-or-equal from the list
       break;
     }
   }
@@ -808,8 +840,14 @@ INT UEyeCamDriver::setFreeRunMode() {
         "] (" << err2str(is_err) << ")");
       WARN_STREAM("WARNING: camera hardware does not support ueye_cam's master-slave synchronization method");
     }
-
-    if ((is_err = is_EnableEvent(cam_handle_, IS_SET_EVENT_FRAME)) != IS_SUCCESS) {
+    IS_INIT_EVENT init_events[] = {{IS_SET_EVENT_FRAME, FALSE, FALSE}};
+    if ((is_err = is_Event(cam_handle_, IS_EVENT_CMD_INIT, init_events, sizeof(init_events))) != IS_SUCCESS) {
+      ERROR_STREAM("Could not init frame event for [" << cam_name_ <<
+        "] (" << err2str(is_err) << ")");
+      return is_err;
+    }
+    UINT events[] = {IS_SET_EVENT_FRAME};
+    if ((is_err = is_Event(cam_handle_,IS_EVENT_CMD_ENABLE, events, sizeof(events))) != IS_SUCCESS) {
       ERROR_STREAM("Could not enable frame event for [" << cam_name_ <<
         "] (" << err2str(is_err) << ")");
       return is_err;
@@ -834,7 +872,14 @@ INT UEyeCamDriver::setExtTriggerMode() {
   if (!extTriggerModeActive()) {
     setStandbyMode(); // No need to check for success
 
-    if ((is_err = is_EnableEvent(cam_handle_, IS_SET_EVENT_FRAME)) != IS_SUCCESS) {
+    IS_INIT_EVENT init_events[] = {{IS_SET_EVENT_FRAME, FALSE, FALSE}};
+    if ((is_err = is_Event(cam_handle_, IS_EVENT_CMD_INIT, init_events, sizeof(init_events))) != IS_SUCCESS) {
+      ERROR_STREAM("Could not init frame event for [" << cam_name_ <<
+        "] (" << err2str(is_err) << ")");
+      return is_err;
+    }
+    UINT events[] = {IS_SET_EVENT_FRAME};
+    if ((is_err = is_Event(cam_handle_,IS_EVENT_CMD_ENABLE, events, sizeof(events))) != IS_SUCCESS) {
       ERROR_STREAM("Could not enable frame event for [" << cam_name_ <<
         "] (" << err2str(is_err) << ")");
       return is_err;
@@ -889,12 +934,19 @@ INT UEyeCamDriver::setStandbyMode() {
 
   INT is_err = IS_SUCCESS;
 
+  UINT events[] = {IS_SET_EVENT_FRAME};
+    
   if (extTriggerModeActive()) {
-      if ((is_err = is_DisableEvent(cam_handle_, IS_SET_EVENT_FRAME)) != IS_SUCCESS) {
+      if ((is_err = is_Event(cam_handle_,IS_EVENT_CMD_DISABLE, events, sizeof(events))) != IS_SUCCESS) {
         ERROR_STREAM("Could not disable frame event for [" << cam_name_ <<
           "] (" << err2str(is_err) << ")");
         return is_err;
       }
+      if ((is_err = is_Event(cam_handle_,IS_EVENT_CMD_EXIT, events, sizeof(events))) != IS_SUCCESS) {
+        ERROR_STREAM("Could not exit frame event for [" << cam_name_ <<
+          "] (" << err2str(is_err) << ")");
+        return is_err;
+      }         
       if ((is_err = is_SetExternalTrigger(cam_handle_, IS_SET_TRIGGER_OFF)) != IS_SUCCESS) {
         ERROR_STREAM("Could not disable external trigger mode for [" << cam_name_ <<
           "] (" << err2str(is_err) << ")");
@@ -915,11 +967,16 @@ INT UEyeCamDriver::setStandbyMode() {
         "] (" << err2str(is_err) << ")");
       return is_err;
     }
-    if ((is_err = is_DisableEvent(cam_handle_, IS_SET_EVENT_FRAME)) != IS_SUCCESS) {
+    if ((is_err = is_Event(cam_handle_,IS_EVENT_CMD_DISABLE, events, sizeof(events))) != IS_SUCCESS) {
       ERROR_STREAM("Could not disable frame event for [" << cam_name_ <<
         "] (" << err2str(is_err) << ")");
       return is_err;
     }
+    if ((is_err = is_Event(cam_handle_,IS_EVENT_CMD_EXIT, events, sizeof(events))) != IS_SUCCESS) {
+      ERROR_STREAM("Could not exit frame event for [" << cam_name_ <<
+        "] (" << err2str(is_err) << ")");
+      return is_err;
+    }       
     if ((is_err = is_StopLiveVideo(cam_handle_, IS_WAIT)) != IS_SUCCESS) {
       ERROR_STREAM("Could not stop live video mode for [" << cam_name_ <<
         "] (" << err2str(is_err) << ")");
@@ -927,7 +984,7 @@ INT UEyeCamDriver::setStandbyMode() {
     }
     DEBUG_STREAM("Stopped free-run live video mode for [" << cam_name_ << "]");
   }
-  if ((is_err = is_CameraStatus(cam_handle_, IS_STANDBY, IS_GET_STATUS)) != IS_SUCCESS) {
+  if ((is_err = static_cast<int>(is_CameraStatus(cam_handle_, IS_STANDBY, IS_GET_STATUS))) != IS_SUCCESS) {
     ERROR_STREAM("Could not set standby mode for [" << cam_name_ <<
       "] (" << err2str(is_err) << ")");
     return is_err;
@@ -937,14 +994,15 @@ INT UEyeCamDriver::setStandbyMode() {
 }
 
 
-const char* UEyeCamDriver::processNextFrame(INT timeout_ms) {
-  if (!freeRunModeActive() && !extTriggerModeActive()) return NULL;
+const char* UEyeCamDriver::processNextFrame(UINT timeout_ms) {
+  if (!freeRunModeActive() && !extTriggerModeActive()) return nullptr;
 
   INT is_err = IS_SUCCESS;
 
   // Wait for frame event
-  if ((is_err = is_WaitEvent(cam_handle_, IS_SET_EVENT_FRAME,
-        timeout_ms)) != IS_SUCCESS) {
+  UINT events[] = {IS_SET_EVENT_FRAME};
+  IS_WAIT_EVENTS wait_events = {events, 1, FALSE, timeout_ms, 0, 0};
+  if ((is_err = is_Event(cam_handle_, IS_EVENT_CMD_WAIT, &wait_events, sizeof(wait_events))) != IS_SUCCESS) {
     if (is_err == IS_TIMED_OUT) {
       ERROR_STREAM("Timed out while acquiring image from [" << cam_name_ <<
         "] (" << err2str(is_err) << ")");
@@ -954,7 +1012,7 @@ const char* UEyeCamDriver::processNextFrame(INT timeout_ms) {
       ERROR_STREAM("Failed to acquire image from [" << cam_name_ <<
         "] (" << err2str(is_err) << ")");
     }
-    return NULL;
+    return nullptr;
   }
 
   return cam_buffer_;
@@ -1058,9 +1116,9 @@ INT UEyeCamDriver::reallocateCamBuffer() {
   setStandbyMode();
 
   // Free existing memory from previous calls to reallocateCamBuffer()
-  if (cam_buffer_ != NULL) {
+  if (cam_buffer_ != nullptr) {
     is_err = is_FreeImageMem(cam_handle_, cam_buffer_, cam_buffer_id_);
-    cam_buffer_ = NULL;
+    cam_buffer_ = nullptr;
   }
 
   // Query camera's current resolution settings, for redundancy
@@ -1099,7 +1157,7 @@ INT UEyeCamDriver::reallocateCamBuffer() {
       ") is smaller than buffer's expected stride [= width (" << cam_aoi_.s32Width << ") * bits per pixel (" << bits_per_pixel_ << ") /8] for [" << cam_name_ <<
       "]\n(THIS IS A CODING ERROR, PLEASE CONTACT PACKAGE AUTHOR)");
   }
-  cam_buffer_size_ = cam_buffer_pitch_ * cam_aoi_.s32Height;
+  cam_buffer_size_ = static_cast<unsigned int>(cam_buffer_pitch_ * cam_aoi_.s32Height);
 
   // Report updated settings
   DEBUG_STREAM("Allocated internal memory for [" << cam_name_ << "]:" <<
@@ -1204,7 +1262,6 @@ const char* UEyeCamDriver::err2str(INT error) {
   CASE(IS_ERROR_CPU_IDLE_STATES_CONFIGURATION);
   default:
     return "UNKNOWN ERROR";
-    break;
   }
   return "UNKNOWN ERROR";
 #undef CASE
@@ -1273,14 +1330,13 @@ const char* UEyeCamDriver::colormode2str(INT mode) {
   // CASE(IS_CM_BGRA12_PACKED);
   default:
     return "UNKNOWN COLOR MODE";
-    break;
   }
   return "UNKNOWN COLOR MODE";
 #undef CASE
 }
 
 
-const INT UEyeCamDriver::colormode2bpp(INT mode) {
+INT UEyeCamDriver::colormode2bpp(INT mode) {
   switch (mode) {
     case IS_CM_SENSOR_RAW8:
     case IS_CM_MONO8:
@@ -1324,7 +1380,7 @@ const INT UEyeCamDriver::colormode2bpp(INT mode) {
 }
 
 
-const bool UEyeCamDriver::isSupportedColorMode(INT mode) {
+bool UEyeCamDriver::isSupportedColorMode(INT mode) {
   switch (mode) {
     case IS_CM_SENSOR_RAW8:
     case IS_CM_SENSOR_RAW10:
@@ -1383,7 +1439,7 @@ const std::map<std::string, INT> UEyeCamDriver::COLOR_DICTIONARY = {
 };
 
 
-const INT UEyeCamDriver::name2colormode(const std::string& name) {
+INT UEyeCamDriver::name2colormode(const std::string& name) {
   const std::map<std::string, INT>::const_iterator iter = COLOR_DICTIONARY.find(name);
   if (iter!=COLOR_DICTIONARY.end()) {
     return iter->second;
@@ -1438,13 +1494,13 @@ void* UEyeCamDriver::unpackRGB10(void* dst, void* src, size_t num) {
   // unpack a whole pixels per iteration
   for (size_t i=0; i<num/4; ++i) {
     pixel = (*from);
-    to[0] = pixel;
+    to[0] = static_cast<unsigned short>(pixel);
     to[0] <<= 6;
     pixel >>= 4;
-    to[1] = pixel;
+    to[1] = static_cast<unsigned short>(pixel);
     to[1] &= 0b1111111111000000;
     pixel >>= 10;
-    to[2] = pixel;
+    to[2] = static_cast<unsigned short>(pixel);
     to[2] &= 0b1111111111000000;
     to+=3;
     ++from;

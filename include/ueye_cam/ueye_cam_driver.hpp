@@ -214,17 +214,29 @@ public:
       INT& green_gain_prc, INT& blue_gain_prc, bool& gain_boost);
 
   /**
+   * Updates current camera handle's software gamma to specified parameter.
+   *
+   * According to ids this is only possible when the color mode is debayered by the ids driver 
+   *
+   * \param software_gamma gamma value in percentage
+   *
+   * \return IS_SUCCESS if successful, error flag otherwise (see err2str).
+   */
+  INT setSoftwareGamma(INT& software_gamma);
+
+  /**
    * Updates current camera handle's exposure / shutter either to auto mode, or
    * to specified manual parameters.
    *
    * \param auto_exposure Updates camera's hardware auto shutter / auto shutter mode.
    *   Will be deactivated if camera does not support mode.
+   * \param auto_exposure_reference sets the reference value for the auto_exposure controller. 
    * \param exposure_ms Manual exposure setting, in ms. Valid value range depends on
    *   current camera pixel clock rate.
    *
    * \return IS_SUCCESS if successful, error flag otherwise (see err2str).
    */
-  INT setExposure(bool& auto_exposure, double& exposure_ms);
+  INT setExposure(bool& auto_exposure, double& auto_exposure_reference, double& exposure_ms);
 
   /**
    * Enables or disables the current camera handle's auto white balance mode, and
@@ -350,24 +362,24 @@ public:
    *         WARNING: image buffer contents may change during capture, or may become
    *         invalid after calling other functions!
    */
-  const char* processNextFrame(INT timeout_ms);
+  const char* processNextFrame(UINT timeout_ms);
 
-  inline bool isConnected() { return (cam_handle_ != (HIDS) 0); }
+  inline bool isConnected() { return (cam_handle_ != HIDS(0)); }
 
   inline bool freeRunModeActive() {
-    return ((cam_handle_ != (HIDS) 0) &&
+    return ((cam_handle_ != HIDS(0)) &&
         (is_SetExternalTrigger(cam_handle_, IS_GET_EXTERNALTRIGGER) == IS_SET_TRIGGER_OFF) &&
         (is_CaptureVideo(cam_handle_, IS_GET_LIVE) == TRUE));
   }
 
   inline bool extTriggerModeActive() {
-    return ((cam_handle_ != (HIDS) 0) &&
+    return ((cam_handle_ != HIDS(0)) &&
         (is_SetExternalTrigger(cam_handle_, IS_GET_EXTERNALTRIGGER) == IS_SET_TRIGGER_HI_LO) &&
         (is_CaptureVideo(cam_handle_, IS_GET_LIVE) == TRUE));
   }
 
   inline bool isCapturing() {
-    return ((cam_handle_ != (HIDS) 0) &&
+    return ((cam_handle_ != HIDS(0)) &&
         (is_CaptureVideo(cam_handle_, IS_GET_LIVE) == TRUE));
   }
 
@@ -389,17 +401,17 @@ public:
   /**
    *  bits per pixel attribute of UEye color mode flag
    */
-  const static INT colormode2bpp(INT mode);
+  static INT colormode2bpp(INT mode);
 
   /**
    *  check if this driver supports the chosen UEye color mode
    */
-  const static bool isSupportedColorMode(INT mode);
+  static bool isSupportedColorMode(INT mode);
 
   /**
    * translates ROS name to UEye color mode flag or the other way round.
    */
-  const static INT name2colormode(const std::string& name);
+  static INT name2colormode(const std::string& name);
   const static std::string colormode2name(INT mode);
 
   /**
@@ -444,7 +456,7 @@ protected:
   virtual INT syncCamConfig(std::string dft_mode_str = "mono8");
 
 
-  virtual void handleTimeout() {};
+  virtual void handleTimeout() {}
 
 
   /**
