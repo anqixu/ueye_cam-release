@@ -77,7 +77,7 @@ UEyeCamNodelet::UEyeCamNodelet():
     nodelet::Nodelet(),
     UEyeCamDriver(ANY_CAMERA, DEFAULT_CAMERA_NAME),
     frame_grab_alive_(false),
-    ros_cfg_(NULL),
+    ros_cfg_(nullptr),
     cfg_sync_requested_(false),
     ros_frame_count_(0),
     timeout_count_(0),
@@ -94,8 +94,8 @@ UEyeCamNodelet::UEyeCamNodelet():
   cam_params_.image_left = -1;
   cam_params_.image_top = -1;
   cam_params_.color_mode = DEFAULT_COLOR_MODE;
-  cam_params_.subsampling = cam_subsampling_rate_;
-  cam_params_.binning = cam_binning_rate_;
+  cam_params_.subsampling = static_cast<int>(cam_subsampling_rate_);
+  cam_params_.binning = static_cast<int>(cam_binning_rate_);
   cam_params_.sensor_scaling = cam_sensor_scaling_rate_;
   cam_params_.auto_gain = false;
   cam_params_.master_gain = 0;
@@ -103,7 +103,9 @@ UEyeCamNodelet::UEyeCamNodelet():
   cam_params_.green_gain = 0;
   cam_params_.blue_gain = 0;
   cam_params_.gain_boost = 0;
+  cam_params_.software_gamma=100;
   cam_params_.auto_exposure = false;
+  cam_params_.auto_exposure_reference = 128;
   cam_params_.exposure = DEFAULT_EXPOSURE;
   cam_params_.auto_white_balance = false;
   cam_params_.white_balance_red_offset = 0;
@@ -154,11 +156,6 @@ void UEyeCamNodelet::onInit() {
 
   loadIntrinsicsFile();
 
-  // Setup dynamic reconfigure server
-  ros_cfg_ = new ReconfigureServer(ros_cfg_mutex_, local_nh);
-  ReconfigureServer::CallbackType f;
-  f = bind(&UEyeCamNodelet::configCallback, this, _1, _2);
-
   // Setup publishers, subscribers, and services
   ros_cam_pub_ = it.advertiseCamera(cam_name_ + "/" + cam_topic_, 1);
   set_cam_info_srv_ = nh.advertiseService(cam_name_ + "/set_camera_info",
@@ -172,6 +169,10 @@ void UEyeCamNodelet::onInit() {
     return;
   }
 
+  // Setup dynamic reconfigure server
+  ros_cfg_ = new ReconfigureServer(ros_cfg_mutex_, local_nh);
+  ReconfigureServer::CallbackType f;
+  f = bind(&UEyeCamNodelet::configCallback, this, _1, _2);
   ros_cfg_->setCallback(f); // this will call configCallback, which will configure the camera's parameters
   startFrameGrabber();
   INFO_STREAM(
@@ -190,7 +191,9 @@ void UEyeCamNodelet::onInit() {
       "Green Gain:\t\t" << cam_params_.green_gain << endl <<
       "Blue Gain:\t\t" << cam_params_.blue_gain << endl <<
       "Gain Boost:\t\t" << cam_params_.gain_boost << endl <<
+      "Software Gamma:\t\t" << cam_params_.software_gamma << endl <<
       "Auto Exposure:\t\t" << cam_params_.auto_exposure << endl <<
+      "Auto Exposure Reference:\t" << cam_params_.auto_exposure_reference << endl <<
       "Exposure (ms):\t\t" << cam_params_.exposure << endl <<
       "Auto White Balance:\t" << cam_params_.auto_white_balance << endl <<
       "WB Red Offset:\t\t" << cam_params_.white_balance_red_offset << endl <<
@@ -225,6 +228,8 @@ INT UEyeCamNodelet::parseROSParams(ros::NodeHandle& local_nh) {
         hasNewParams = true;
       }
     }
+  } else {
+    local_nh.setParam("image_width", cam_params_.image_width);
   }
   if (local_nh.hasParam("image_height")) {
     local_nh.getParam("image_height", cam_params_.image_height);
@@ -238,18 +243,24 @@ INT UEyeCamNodelet::parseROSParams(ros::NodeHandle& local_nh) {
         hasNewParams = true;
       }
     }
+  } else {
+    local_nh.setParam("image_height", cam_params_.image_height);
   }
   if (local_nh.hasParam("image_top")) {
     local_nh.getParam("image_top", cam_params_.image_top);
     if (cam_params_.image_top != prevCamParams.image_top) {
       hasNewParams = true;
     }
+  } else {
+    local_nh.setParam("image_top", cam_params_.image_top);
   }
   if (local_nh.hasParam("image_left")) {
     local_nh.getParam("image_left", cam_params_.image_left);
     if (cam_params_.image_left != prevCamParams.image_left) {
       hasNewParams = true;
     }
+  } else {
+    local_nh.setParam("image_left", cam_params_.image_left);
   }
   if (local_nh.hasParam("color_mode")) {
     local_nh.getParam("color_mode", cam_params_.color_mode);
@@ -271,6 +282,8 @@ INT UEyeCamNodelet::parseROSParams(ros::NodeHandle& local_nh) {
         cam_params_.color_mode = prevCamParams.color_mode;
       }
     }
+  } else {
+    local_nh.setParam("color_mode", cam_params_.color_mode);
   }
   if (local_nh.hasParam("subsampling")) {
     local_nh.getParam("subsampling", cam_params_.subsampling);
@@ -288,12 +301,16 @@ INT UEyeCamNodelet::parseROSParams(ros::NodeHandle& local_nh) {
         hasNewParams = true;
       }
     }
+  } else {
+    local_nh.setParam("subsampling", cam_params_.subsampling);
   }
   if (local_nh.hasParam("auto_gain")) {
     local_nh.getParam("auto_gain", cam_params_.auto_gain);
     if (cam_params_.auto_gain != prevCamParams.auto_gain) {
       hasNewParams = true;
     }
+  } else {
+    local_nh.setParam("auto_gain", cam_params_.auto_gain);
   }
   if (local_nh.hasParam("master_gain")) {
     local_nh.getParam("master_gain", cam_params_.master_gain);
@@ -306,6 +323,8 @@ INT UEyeCamNodelet::parseROSParams(ros::NodeHandle& local_nh) {
         hasNewParams = true;
       }
     }
+  } else {
+    local_nh.setParam("master_gain", cam_params_.master_gain);
   }
   if (local_nh.hasParam("red_gain")) {
     local_nh.getParam("red_gain", cam_params_.red_gain);
@@ -318,6 +337,8 @@ INT UEyeCamNodelet::parseROSParams(ros::NodeHandle& local_nh) {
         hasNewParams = true;
       }
     }
+  } else {
+    local_nh.setParam("red_gain", cam_params_.red_gain);
   }
   if (local_nh.hasParam("green_gain")) {
     local_nh.getParam("green_gain", cam_params_.green_gain);
@@ -330,6 +351,8 @@ INT UEyeCamNodelet::parseROSParams(ros::NodeHandle& local_nh) {
         hasNewParams = true;
       }
     }
+  } else {
+    local_nh.setParam("green_gain", cam_params_.green_gain);
   }
   if (local_nh.hasParam("blue_gain")) {
     local_nh.getParam("blue_gain", cam_params_.blue_gain);
@@ -342,18 +365,38 @@ INT UEyeCamNodelet::parseROSParams(ros::NodeHandle& local_nh) {
         hasNewParams = true;
       }
     }
+  } else {
+    local_nh.setParam("blue_gain", cam_params_.blue_gain);
   }
   if (local_nh.hasParam("gain_boost")) {
     local_nh.getParam("gain_boost", cam_params_.gain_boost);
     if (cam_params_.gain_boost != prevCamParams.gain_boost) {
       hasNewParams = true;
     }
+  } else {
+    local_nh.setParam("gain_boost", cam_params_.gain_boost);
   }
+  if (local_nh.hasParam("software_gamma")) {
+    local_nh.getParam("software_gamma", cam_params_.software_gamma);
+    if (cam_params_.software_gamma != prevCamParams.software_gamma) {
+      hasNewParams = true;
+    }
+  }  
   if (local_nh.hasParam("auto_exposure")) {
     local_nh.getParam("auto_exposure", cam_params_.auto_exposure);
     if (cam_params_.auto_exposure != prevCamParams.auto_exposure) {
       hasNewParams = true;
     }
+  } else {
+    local_nh.setParam("auto_exposure", cam_params_.auto_exposure);
+  }
+  if (local_nh.hasParam("auto_exposure_reference")) {
+    local_nh.getParam("auto_exposure_reference", cam_params_.auto_exposure_reference);
+    if (cam_params_.auto_exposure_reference != prevCamParams.auto_exposure_reference) {
+      hasNewParams = true;
+    }
+  } else {
+    local_nh.setParam("auto_exposure_reference", cam_params_.auto_exposure_reference);
   }
   if (local_nh.hasParam("exposure")) {
     local_nh.getParam("exposure", cam_params_.exposure);
@@ -366,12 +409,16 @@ INT UEyeCamNodelet::parseROSParams(ros::NodeHandle& local_nh) {
         hasNewParams = true;
       }
     }
+  } else {
+    local_nh.setParam("exposure", cam_params_.exposure);
   }
   if (local_nh.hasParam("auto_white_balance")) {
     local_nh.getParam("auto_white_balance", cam_params_.auto_white_balance);
     if (cam_params_.auto_white_balance != prevCamParams.auto_white_balance) {
       hasNewParams = true;
     }
+  } else {
+    local_nh.setParam("auto_white_balance", cam_params_.auto_white_balance);
   }
   if (local_nh.hasParam("white_balance_red_offset")) {
     local_nh.getParam("white_balance_red_offset", cam_params_.white_balance_red_offset);
@@ -385,6 +432,8 @@ INT UEyeCamNodelet::parseROSParams(ros::NodeHandle& local_nh) {
         hasNewParams = true;
       }
     }
+  } else {
+    local_nh.setParam("white_balance_red_offset", cam_params_.white_balance_red_offset);
   }
   if (local_nh.hasParam("white_balance_blue_offset")) {
     local_nh.getParam("white_balance_blue_offset", cam_params_.white_balance_blue_offset);
@@ -398,18 +447,24 @@ INT UEyeCamNodelet::parseROSParams(ros::NodeHandle& local_nh) {
         hasNewParams = true;
       }
     }
+  } else {
+    local_nh.setParam("white_balance_blue_offset", cam_params_.white_balance_blue_offset);
   }
   if (local_nh.hasParam("ext_trigger_mode")) {
     local_nh.getParam("ext_trigger_mode", cam_params_.ext_trigger_mode);
     // NOTE: no need to set any parameters, since external trigger / live-run
     //       modes come into effect during frame grab loop, which is assumed
     //       to not having been initialized yet
+  } else {
+    local_nh.setParam("ext_trigger_mode", cam_params_.ext_trigger_mode);
   }
   if (local_nh.hasParam("flash_delay")) {
     local_nh.getParam("flash_delay", cam_params_.flash_delay);
     // NOTE: no need to set any parameters, since flash delay comes into
     //       effect during frame grab loop, which is assumed to not having been
     //       initialized yet
+  } else {
+    local_nh.setParam("flash_delay", cam_params_.flash_delay);
   }
   if (local_nh.hasParam("flash_duration")) {
     local_nh.getParam("flash_duration", cam_params_.flash_duration);
@@ -422,12 +477,16 @@ INT UEyeCamNodelet::parseROSParams(ros::NodeHandle& local_nh) {
     // NOTE: no need to set any parameters, since flash duration comes into
     //       effect during frame grab loop, which is assumed to not having been
     //       initialized yet
+  } else {
+    local_nh.setParam("flash_duration", cam_params_.flash_duration);
   }
   if (local_nh.hasParam("auto_frame_rate")) {
     local_nh.getParam("auto_frame_rate", cam_params_.auto_frame_rate);
     if (cam_params_.auto_frame_rate != prevCamParams.auto_frame_rate) {
       hasNewParams = true;
     }
+  } else {
+    local_nh.setParam("auto_frame_rate", cam_params_.auto_frame_rate);
   }
   if (local_nh.hasParam("frame_rate")) {
     local_nh.getParam("frame_rate", cam_params_.frame_rate);
@@ -441,6 +500,8 @@ INT UEyeCamNodelet::parseROSParams(ros::NodeHandle& local_nh) {
         hasNewParams = true;
       }
     }
+  } else {
+    local_nh.setParam("frame_rate", cam_params_.frame_rate);
   }
   if (local_nh.hasParam("output_rate")) {
     local_nh.getParam("output_rate", cam_params_.output_rate);
@@ -453,6 +514,8 @@ INT UEyeCamNodelet::parseROSParams(ros::NodeHandle& local_nh) {
       cam_params_.output_rate = std::min(cam_params_.frame_rate, cam_params_.output_rate);
       // hasNewParams = true; // No need to re-allocate buffer memory or reconfigure camera parameters
     }
+  } else {
+    local_nh.setParam("output_rate", cam_params_.output_rate);
   }
   if (local_nh.hasParam("pixel_clock")) {
     local_nh.getParam("pixel_clock", cam_params_.pixel_clock);
@@ -466,18 +529,24 @@ INT UEyeCamNodelet::parseROSParams(ros::NodeHandle& local_nh) {
         hasNewParams = true;
       }
     }
+  } else {
+    local_nh.setParam("pixel_clock", cam_params_.pixel_clock);
   }
   if (local_nh.hasParam("flip_upd")) {
     local_nh.getParam("flip_upd", cam_params_.flip_upd);
     if (cam_params_.flip_upd != prevCamParams.flip_upd) {
       hasNewParams = true;
     }
+  } else {
+    local_nh.setParam("flip_upd", cam_params_.flip_upd);
   }
   if (local_nh.hasParam("flip_lr")) {
     local_nh.getParam("flip_lr", cam_params_.flip_lr);
     if (cam_params_.flip_lr != prevCamParams.flip_lr) {
       hasNewParams = true;
     }
+  } else {
+    local_nh.setParam("flip_lr", cam_params_.flip_lr);
   }
 
   if (hasNewParams) {
@@ -511,9 +580,10 @@ INT UEyeCamNodelet::parseROSParams(ros::NodeHandle& local_nh) {
     if ((is_err = setGain(cam_params_.auto_gain, cam_params_.master_gain,
         cam_params_.red_gain, cam_params_.green_gain,
         cam_params_.blue_gain, cam_params_.gain_boost)) != IS_SUCCESS) noop;
+    if ((is_err = setSoftwareGamma(cam_params_.software_gamma)) != IS_SUCCESS) noop;
     if ((is_err = setPixelClockRate(cam_params_.pixel_clock)) != IS_SUCCESS) return is_err;
     if ((is_err = setFrameRate(cam_params_.auto_frame_rate, cam_params_.frame_rate)) != IS_SUCCESS) return is_err;
-    if ((is_err = setExposure(cam_params_.auto_exposure, cam_params_.exposure)) != IS_SUCCESS) noop;
+    if ((is_err = setExposure(cam_params_.auto_exposure, cam_params_.auto_exposure_reference, cam_params_.exposure)) != IS_SUCCESS) noop;
     if ((is_err = setWhiteBalance(cam_params_.auto_white_balance, cam_params_.white_balance_red_offset,
       cam_params_.white_balance_blue_offset)) != IS_SUCCESS) noop;
     if ((is_err = setMirrorUpsideDown(cam_params_.flip_upd)) != IS_SUCCESS) noop;
@@ -611,6 +681,10 @@ void UEyeCamNodelet::configCallback(ueye_cam::UEyeCamConfig& config, uint32_t le
         config.red_gain, config.green_gain,
         config.blue_gain, config.gain_boost) != IS_SUCCESS) return;
   }
+  if (config.software_gamma != cam_params_.software_gamma) {
+    if (setSoftwareGamma(config.software_gamma) != IS_SUCCESS) return;    
+  }
+
 
   if (config.pixel_clock != cam_params_.pixel_clock) {
     if (setPixelClockRate(config.pixel_clock) != IS_SUCCESS) return;
@@ -634,8 +708,9 @@ void UEyeCamNodelet::configCallback(ueye_cam::UEyeCamConfig& config, uint32_t le
   }
 
   if (config.auto_exposure != cam_params_.auto_exposure ||
+      config.auto_exposure_reference != cam_params_.auto_exposure_reference ||
       config.exposure != cam_params_.exposure) {
-    if (setExposure(config.auto_exposure, config.exposure) != IS_SUCCESS) return;
+    if (setExposure(config.auto_exposure, config.auto_exposure_reference, config.exposure) != IS_SUCCESS) return;
   }
 
   if (config.auto_white_balance != cam_params_.auto_white_balance ||
@@ -660,11 +735,11 @@ void UEyeCamNodelet::configCallback(ueye_cam::UEyeCamConfig& config, uint32_t le
     //       cam_params_.flash_duration is type int, and also sizeof(int)
     //       may not equal to sizeof(INT) / sizeof(UINT)
     INT flash_delay = config.flash_delay;
-    UINT flash_duration = config.flash_duration;
-    if (setFlashParams(flash_delay, flash_duration) != IS_SUCCESS) return;
+    UINT flash_duration = static_cast<UINT>(config.flash_duration);
+    setFlashParams(flash_delay, flash_duration);
     // Copy back actual flash parameter values that were set
     config.flash_delay = flash_delay;
-    config.flash_duration = flash_duration;
+    config.flash_duration = static_cast<int>(flash_duration);
   }
 
   // Update local copy of parameter set to newly updated set
@@ -699,13 +774,13 @@ INT UEyeCamNodelet::syncCamConfig(string dft_mode_str) {
   cam_params_.image_height = cam_aoi_.s32Height; // sensor's Area of Interest, and not of the image
   if (cam_params_.image_left >= 0) cam_params_.image_left = cam_aoi_.s32X; // TODO: 1 ideally want to ensure that aoi top-left does correspond to centering
   if (cam_params_.image_top >= 0) cam_params_.image_top = cam_aoi_.s32Y;
-  cam_params_.subsampling = cam_subsampling_rate_;
-  cam_params_.binning = cam_binning_rate_;
+  cam_params_.subsampling = static_cast<int>(cam_subsampling_rate_);
+  cam_params_.binning = static_cast<int>(cam_binning_rate_);
   cam_params_.sensor_scaling = cam_sensor_scaling_rate_;
   //cfg_sync_requested_ = true; // WARNING: assume that dyncfg client may want to override current settings
 
   // (Re-)populate ROS image message
-  ros_image_.header.frame_id = "/" + frame_name_;
+  ros_image_.header.frame_id = frame_name_;
   // NOTE: .height, .width, .encoding, .step and .data determined in fillImgMsg();
   //       .is_bigendian determined in constructor
 
@@ -757,6 +832,13 @@ INT UEyeCamNodelet::queryCamParams() {
     cam_params_.gain_boost = false;
   }
 
+  if ((is_err = is_Gamma(cam_handle_, IS_GAMMA_CMD_GET, (void*) &cam_params_.software_gamma, 
+      sizeof(cam_params_.software_gamma))) != IS_SUCCESS) {
+    ERROR_STREAM("Failed to query software gamma value for [" << cam_name_ <<
+      "] (" << err2str(is_err) << ")"); 
+      return is_err;   
+  }
+
   if ((is_err = is_SetAutoParameter(cam_handle_,
       IS_GET_ENABLE_AUTO_SENSOR_SHUTTER, &pval1, &pval2)) != IS_SUCCESS &&
       (is_err = is_SetAutoParameter(cam_handle_,
@@ -766,6 +848,12 @@ INT UEyeCamNodelet::queryCamParams() {
     return is_err;
   }
   cam_params_.auto_exposure = (pval1 != 0);
+
+  if ((is_err = is_SetAutoParameter (cam_handle_, IS_GET_AUTO_REFERENCE, 
+      &cam_params_.auto_exposure_reference, 0)) != IS_SUCCESS) {
+    ERROR_STREAM("Failed to query exposure reference value for [" << cam_name_ <<
+      "] (" << err2str(is_err) << ")");    
+      }
 
   if ((is_err = is_Exposure(cam_handle_, IS_EXPOSURE_CMD_GET_EXPOSURE,
       &cam_params_.exposure, sizeof(cam_params_.exposure))) != IS_SUCCESS) {
@@ -790,8 +878,8 @@ INT UEyeCamNodelet::queryCamParams() {
       cam_name_ << "] (" << err2str(is_err) << ")");
     return is_err;
   }
-  cam_params_.white_balance_red_offset = pval1;
-  cam_params_.white_balance_blue_offset = pval2;
+  cam_params_.white_balance_red_offset = static_cast<int>(pval1);
+  cam_params_.white_balance_blue_offset = static_cast<int>(pval2);
 
   IO_FLASH_PARAMS currFlashParams;
   if ((is_err = is_IO(cam_handle_, IS_IO_CMD_FLASH_GET_PARAMS,
@@ -801,7 +889,7 @@ INT UEyeCamNodelet::queryCamParams() {
     return is_err;
   }
   cam_params_.flash_delay = currFlashParams.s32Delay;
-  cam_params_.flash_duration = currFlashParams.u32Duration;
+  cam_params_.flash_duration = static_cast<int>(currFlashParams.u32Duration);
 
   if ((is_err = is_SetAutoParameter(cam_handle_,
       IS_GET_ENABLE_AUTO_SENSOR_FRAMERATE, &pval1, &pval2)) != IS_SUCCESS &&
@@ -826,7 +914,7 @@ INT UEyeCamNodelet::queryCamParams() {
       "] (" << err2str(is_err) << ")");
     return is_err;
   }
-  cam_params_.pixel_clock = currPixelClock;
+  cam_params_.pixel_clock = static_cast<int>(currPixelClock);
 
   INT currROP = is_SetRopEffect(cam_handle_, IS_GET_ROP_EFFECT, 0, 0);
   cam_params_.flip_upd = ((currROP & IS_SET_ROP_MIRROR_UPDOWN) == IS_SET_ROP_MIRROR_UPDOWN);
@@ -877,7 +965,7 @@ INT UEyeCamNodelet::disconnectCam() {
 bool UEyeCamNodelet::setCamInfo(sensor_msgs::SetCameraInfo::Request& req,
     sensor_msgs::SetCameraInfo::Response& rsp) {
   ros_cam_info_ = req.camera_info;
-  ros_cam_info_.header.frame_id = "/" + frame_name_;
+  ros_cam_info_.header.frame_id = frame_name_;
   rsp.success = saveIntrinsicsFile();
   rsp.status_message = (rsp.success) ?
     "successfully wrote camera info to file" :
@@ -909,7 +997,7 @@ void UEyeCamNodelet::frameGrabLoop() {
   while (frame_grab_alive_ && ros::ok()) {
     // Initialize live video mode if camera was previously asleep, and ROS image topic has subscribers;
     // and stop live video mode if ROS image topic no longer has any subscribers
-    currNumSubscribers = ros_cam_pub_.getNumSubscribers();
+    currNumSubscribers = static_cast<int>(ros_cam_pub_.getNumSubscribers());
     if (currNumSubscribers > 0 && prevNumSubscribers <= 0) {
       // Reset reference time to prevent throttling first frame
       output_rate_mutex_.lock();
@@ -925,20 +1013,22 @@ void UEyeCamNodelet::frameGrabLoop() {
         }
         INFO_STREAM("[" << cam_name_ << "] set to external trigger mode");
       } else {
-        // NOTE: need to copy flash parameters to local copies since
-        //       cam_params_.flash_duration is type int, and also sizeof(int)
-        //       may not equal to sizeof(INT) / sizeof(UINT)
-        INT flash_delay = cam_params_.flash_delay;
-        UINT flash_duration = cam_params_.flash_duration;
-        if ((setFreeRunMode() != IS_SUCCESS) ||
-            (setFlashParams(flash_delay, flash_duration) != IS_SUCCESS)) {
+        if (setFreeRunMode() != IS_SUCCESS) {
           ERROR_STREAM("Shutting down driver nodelet for [" << cam_name_ << "]");
           ros::shutdown();
           return;
         }
+
+        // NOTE: need to copy flash parameters to local copies since
+        //       cam_params_.flash_duration is type int, and also sizeof(int)
+        //       may not equal to sizeof(INT) / sizeof(UINT)
+        INT flash_delay = cam_params_.flash_delay;
+        UINT flash_duration = static_cast<unsigned int>(cam_params_.flash_duration);
+        setFlashParams(flash_delay, flash_duration);
         // Copy back actual flash parameter values that were set
         cam_params_.flash_delay = flash_delay;
-        cam_params_.flash_duration = flash_duration;
+        cam_params_.flash_duration = static_cast<int>(flash_duration);
+
         INFO_STREAM("[" << cam_name_ << "] set to free-run mode");
       }
     } else if (currNumSubscribers <= 0 && prevNumSubscribers > 0) {
@@ -972,9 +1062,9 @@ void UEyeCamNodelet::frameGrabLoop() {
 #endif
 
     if (isCapturing()) {
-      INT eventTimeout = (cam_params_.auto_frame_rate || cam_params_.ext_trigger_mode) ?
-          (INT) 2000 : (INT) (1000.0 / cam_params_.frame_rate * 2);
-      if (processNextFrame(eventTimeout) != NULL) {
+      UINT eventTimeout = (cam_params_.auto_frame_rate || cam_params_.ext_trigger_mode) ?
+          static_cast<INT>(2000) : static_cast<INT>(1000.0 / cam_params_.frame_rate * 2);
+      if (processNextFrame(eventTimeout) != nullptr) {
         // Initialize shared pointers from member messages for nodelet intraprocess publishing
         sensor_msgs::ImagePtr img_msg_ptr(new sensor_msgs::Image(ros_image_));
         sensor_msgs::CameraInfoPtr cam_info_msg_ptr(new sensor_msgs::CameraInfo(ros_cam_info_));
@@ -983,10 +1073,6 @@ void UEyeCamNodelet::frameGrabLoop() {
         if (init_ros_time_.isZero()) {
           if(getClockTick(&init_clock_tick_)) {
             init_ros_time_ = getImageTimestamp();
-
-            // Deal with instability in getImageTimestamp due to daylight savings time
-            if (abs((ros::Time::now() - init_ros_time_).toSec()) > abs((ros::Time::now() - (init_ros_time_+ros::Duration(3600,0))).toSec())) { init_ros_time_ += ros::Duration(3600,0); }
-            if (abs((ros::Time::now() - init_ros_time_).toSec()) > abs((ros::Time::now() - (init_ros_time_-ros::Duration(3600,0))).toSec())) { init_ros_time_ -= ros::Duration(3600,0); }
           }
         }
         img_msg_ptr->header.stamp = cam_info_msg_ptr->header.stamp = getImageTickTimestamp();
@@ -1022,7 +1108,7 @@ void UEyeCamNodelet::frameGrabLoop() {
             init_publish_time_ = img_msg_ptr->header.stamp;
           } else {
             double time_elapsed = (img_msg_ptr->header.stamp - init_publish_time_).toSec();
-            uint64_t curr_output_frame_idx = std::floor(time_elapsed * cam_params_.output_rate);
+            uint64_t curr_output_frame_idx = static_cast<uint64_t>(std::floor(time_elapsed * cam_params_.output_rate));
             if (curr_output_frame_idx <= prev_output_frame_idx_) {
               throttle_curr_frame = true;
             } else {
@@ -1033,8 +1119,8 @@ void UEyeCamNodelet::frameGrabLoop() {
         output_rate_mutex_.unlock();
         if (throttle_curr_frame) continue;
 
-        cam_info_msg_ptr->width = cam_params_.image_width / cam_sensor_scaling_rate_ / cam_binning_rate_;
-        cam_info_msg_ptr->height = cam_params_.image_height / cam_sensor_scaling_rate_ / cam_binning_rate_;
+        cam_info_msg_ptr->width = static_cast<unsigned int>(cam_params_.image_width / cam_sensor_scaling_rate_ / cam_binning_rate_ / cam_subsampling_rate_);
+        cam_info_msg_ptr->height = static_cast<unsigned int>(cam_params_.image_height / cam_sensor_scaling_rate_ / cam_binning_rate_ / cam_subsampling_rate_);
 
         // Copy pixel content from internal frame buffer to ROS image
         if (!fillMsgData(*img_msg_ptr)) continue;
@@ -1108,10 +1194,10 @@ bool UEyeCamNodelet::fillMsgData(sensor_msgs::Image& img) const {
   }
 
   // allocate target memory
-  img.width = cam_aoi_.s32Width;
-  img.height = cam_aoi_.s32Height;
+  img.width = static_cast<unsigned int>(cam_aoi_.s32Width);
+  img.height = static_cast<unsigned int>(cam_aoi_.s32Height);
   img.encoding = ENCODING_DICTIONARY.at(color_mode_);
-  img.step = img.width * sensor_msgs::image_encodings::numChannels(img.encoding) * sensor_msgs::image_encodings::bitDepth(img.encoding)/8;
+  img.step = img.width * static_cast<unsigned int>(sensor_msgs::image_encodings::numChannels(img.encoding)) * static_cast<unsigned int>(sensor_msgs::image_encodings::bitDepth(img.encoding))/8;
   img.data.resize(img.height * img.step);
 
   DEBUG_STREAM("Allocated ROS image buffer for [" << cam_name_ << "]:" <<
@@ -1125,13 +1211,13 @@ bool UEyeCamNodelet::fillMsgData(sensor_msgs::Image& img) const {
 
   if (cam_buffer_pitch_ == expected_row_stride) {
     // Content is contiguous, so copy out the entire buffer at once
-    unpackCopy(img.data.data(), cam_buffer_, img.height*expected_row_stride);
+    unpackCopy(img.data.data(), cam_buffer_, img.height*static_cast<unsigned int>(expected_row_stride));
   } else { // cam_buffer_pitch_ > expected_row_stride
     // Each row contains extra buffer according to cam_buffer_pitch_, so must copy out each row independently
     uint8_t* dst_ptr = img.data.data();
     char* cam_buffer_ptr = cam_buffer_;
     for (INT row = 0; row < cam_aoi_.s32Height; row++) {
-      unpackCopy(dst_ptr, cam_buffer_ptr, expected_row_stride);
+      unpackCopy(dst_ptr, cam_buffer_ptr, static_cast<unsigned long>(expected_row_stride));
       cam_buffer_ptr += cam_buffer_pitch_;
       dst_ptr += img.step;
     }
@@ -1148,7 +1234,7 @@ void UEyeCamNodelet::loadIntrinsicsFile() {
   if (camera_calibration_parsers::readCalibration(cam_intr_filename_, cam_name_, ros_cam_info_)) {
     DEBUG_STREAM("Loaded intrinsics parameters for [" << cam_name_ << "]");
   }
-  ros_cam_info_.header.frame_id = "/" + frame_name_;
+  ros_cam_info_.header.frame_id = frame_name_;
 }
 
 
@@ -1162,17 +1248,26 @@ bool UEyeCamNodelet::saveIntrinsicsFile() {
 }
 
 ros::Time UEyeCamNodelet::getImageTimestamp() {
-  UEYETIME utime;
-  if(getTimestamp(&utime)) {
-    struct tm tm;
-    tm.tm_year = utime.wYear - 1900;
-    tm.tm_mon = utime.wMonth - 1;
-    tm.tm_mday = utime.wDay;
-    tm.tm_hour = utime.wHour;
-    tm.tm_min = utime.wMinute;
-    tm.tm_sec = utime.wSecond;
-    return ros::Time(mktime(&tm),utime.wMilliseconds*1e6);
-  }
+  // There have been several issues reported on time drifts, so we shall rely purely on ros::Time::now()
+  // e.g. https://github.com/anqixu/ueye_cam/issues/82
+  //
+  // UEYETIME utime;
+  // if(getTimestamp(&utime)) {
+  //   struct tm tm;
+  //   tm.tm_year = utime.wYear - 1900;
+  //   tm.tm_mon = utime.wMonth - 1;
+  //   tm.tm_mday = utime.wDay;
+  //   tm.tm_hour = utime.wHour;
+  //   tm.tm_min = utime.wMinute;
+  //   tm.tm_sec = utime.wSecond;
+  //   ros::Time t = ros::Time(mktime(&tm),utime.wMilliseconds*1e6);
+  //
+  //   // Deal with instability due to daylight savings time
+  //   if (abs((ros::Time::now() - t).toSec()) > abs((ros::Time::now() - (t+ros::Duration(3600,0))).toSec())) { t += ros::Duration(3600,0); }
+  //   if (abs((ros::Time::now() - t).toSec()) > abs((ros::Time::now() - (t-ros::Duration(3600,0))).toSec())) { t -= ros::Duration(3600,0); }
+  //
+  //   return t;
+  // }
   return ros::Time::now();
 }
 

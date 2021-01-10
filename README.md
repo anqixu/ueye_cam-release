@@ -1,3 +1,5 @@
+![Build Test (not for release)](https://github.com/anqixu/ueye_cam/workflows/Build%20Test%20(not%20for%20release)/badge.svg?branch=master&event=push)
+
 **DISCLAMER:**
 
 This project was created within an academic research setting, and thus should
@@ -28,13 +30,17 @@ in a timely manner.
                           File -> save parameter -> to file...)
 
 
+**REQUIREMENTS:**  
+[IDS uEye Software Suite](https://en.ids-imaging.com/downloads.html) >= 4.94 
+
+
 **DOCUMENTATION:**
 
 www.ros.org/wiki/ueye_cam
 
 
 
-Copyright (c) 2013-2016, Anqi Xu and contributors
+Copyright (c) 2013-2021, Anqi Xu and contributors
 
 All rights reserved.
 
