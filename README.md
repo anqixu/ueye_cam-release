@@ -1,3 +1,26 @@
+## ueye_cam (noetic) - 1.0.18-2
+
+The packages in the `ueye_cam` repository were released into the `noetic` distro by running `/home/mimic/.local/bin/bloom-release --rosdistro noetic --track noetic ueye_cam` on `Wed, 13 Jan 2021 19:42:24 -0000`
+
+The `ueye_cam` package was released.
+
+Version of package(s) in repository `ueye_cam`:
+
+- upstream repository: https://github.com/anqixu/ueye_cam.git
+- release repository: https://github.com/anqixu/ueye_cam-release.git
+- rosdistro version: `1.0.18-1`
+- old version: `1.0.18-1`
+- new version: `1.0.18-2`
+
+Versions of tools used:
+
+- bloom version: `0.10.0`
+- catkin_pkg version: `0.4.23`
+- rosdep version: `0.20.0`
+- rosdistro version: `0.8.3`
+- vcstools version: `0.1.42`
+
+
 ## ueye_cam (noetic) - 1.0.18-1
 
 The packages in the `ueye_cam` repository were released into the `noetic` distro by running `/home/mimic/.local/bin/bloom-release --rosdistro noetic --track noetic ueye_cam --edit` on `Sun, 10 Jan 2021 00:39:26 -0000`
